@@ -17,7 +17,7 @@ function About() {
   return (
     <section id="about" className="about">
       <div className="about__container">
-        <p className="about__eyebrow">About HealthMate</p>
+        <p className="about__eyebrow">About HealthMate AI</p>
         <h2 className="about__title">LLM-powered medical guidance that meets you where you are</h2>
         <p className="about__lead">
           HealthMate is an AI-driven web assistant designed to turn symptom descriptions into actionable insights. It

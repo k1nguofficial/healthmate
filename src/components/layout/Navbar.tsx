@@ -15,7 +15,7 @@ function Navbar() {
         <span role="img" aria-hidden="true">
           💡
         </span>
-        <span className="navbar__logo-text">HealthMate</span>
+        <span className="navbar__logo-text">HealthMate AI</span>
       </div>
       <nav aria-label="Primary">
         <ul className="navbar__links">

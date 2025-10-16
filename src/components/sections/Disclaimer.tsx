@@ -7,7 +7,7 @@ function Disclaimer() {
         <h2 className="disclaimer__title">Safety Disclaimer</h2>
         <p className="disclaimer__body">
           HealthMate is not a substitute for professional medical diagnosis, treatment, or emergency services. Always
-          consult a licensed healthcare provider for serious symptoms or in case of an emergency.
+          consult a licensed healthcare provider for serious symptoms or in case of an emergency and stuff.
         </p>
       </div>
     </section>
