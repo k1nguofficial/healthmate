@@ -1,0 +1,141 @@
+.contact {
+  padding: 4rem 2.5rem 5rem;
+  background: linear-gradient(180deg, rgba(15, 69, 110, 0.05), rgba(15, 69, 110, 0.18));
+  display: flex;
+  justify-content: center;
+}
+
+.contact__container {
+  width: min(1100px, 100%);
+  display: grid;
+  gap: 2.5rem;
+  color: #0b1f33;
+}
+
+.contact__intro {
+  max-width: 720px;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.contact__eyebrow {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: #0a7fb1;
+}
+
+.contact__title {
+  margin: 0;
+  font-size: clamp(2rem, 2vw + 1rem, 2.75rem);
+}
+
+.contact__subtitle {
+  margin: 0;
+  color: rgba(11, 31, 51, 0.7);
+  line-height: 1.65;
+}
+
+.contact__layout {
+  display: grid;
+  gap: 2rem;
+}
+
+.contact__form {
+  display: grid;
+  gap: 1rem;
+  padding: 2rem;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(12, 104, 152, 0.14);
+}
+
+.contact__form label {
+  display: grid;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.contact__form input,
+.contact__form textarea {
+  width: 100%;
+  border: 1px solid rgba(15, 30, 46, 0.15);
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.contact__form textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.contact__form input:focus,
+.contact__form textarea:focus {
+  outline: none;
+  border-color: #0a7fb1;
+  box-shadow: 0 0 0 3px rgba(10, 127, 177, 0.15);
+}
+
+.contact__form button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.9rem 1.8rem;
+  background: linear-gradient(135deg, #0a7fb1, #38bdf8);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.contact__form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(12, 104, 152, 0.22);
+}
+
+.contact__team {
+  padding: 2rem;
+  border-radius: 24px;
+  background: rgba(10, 127, 177, 0.08);
+  border: 1px solid rgba(10, 127, 177, 0.15);
+  display: grid;
+  gap: 1rem;
+}
+
+.contact__team h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.contact__team ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.contact__team li {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact__team strong {
+  font-size: 1rem;
+}
+
+.contact__team span {
+  color: rgba(11, 31, 51, 0.68);
+  font-size: 0.95rem;
+}
+
+@media (min-width: 900px) {
+  .contact__layout {
+    grid-template-columns: 1.5fr 1fr;
+    align-items: stretch;
+  }
+}

@@ -1,0 +1,17 @@
+#root {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(180deg, rgba(245, 249, 252, 1), rgba(243, 252, 255, 0.9));
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+}
