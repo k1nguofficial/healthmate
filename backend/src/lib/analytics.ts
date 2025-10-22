@@ -21,6 +21,21 @@ type ConcernStat = {
   lastMentionAt: number | null
 }
 
+type ConditionDefinition = {
+  id: string
+  label: string
+  category: string
+  description: string
+  guidance: string
+  matchers: RegExp[]
+}
+
+type ConditionStat = {
+  count: number
+  lastExample: string | null
+  lastMentionAt: number | null
+}
+
 const metrics = {
   totalRequests: 0,
   totalUserMessages: 0,
@@ -95,6 +110,83 @@ const concernDefinitions: ConcernDefinition[] = [
   },
 ]
 
+const conditionDefinitions: ConditionDefinition[] = [
+  {
+    id: 'feverish-illness',
+    label: 'Feverish illness',
+    category: 'Infectious',
+    description: 'Mentions of fever, chills, or body aches that may signal a viral infection.',
+    guidance: 'Encourage rest, hydration, and medical advice for persistent or high fevers.',
+    matchers: [
+      /\bfever(ish)?\b/i,
+      /running a fever/i,
+      /high (fever|temperature)/i,
+      /chills? (and|with)? (fever|body aches?)/i,
+    ],
+  },
+  {
+    id: 'respiratory-infection',
+    label: 'Respiratory infection',
+    category: 'Respiratory',
+    description: 'References to flu, COVID-19, pneumonia, or persistent cough with breathing issues.',
+    guidance: 'Prompt testing, masking, and escalation when breathing becomes difficult.',
+    matchers: [
+      /\bflu\b/i,
+      /influenza/i,
+      /covid(-19)?/i,
+      /coronavirus/i,
+      /pneumonia/i,
+      /bronchitis/i,
+      /persistent cough/i,
+      /trouble breathing/i,
+    ],
+  },
+  {
+    id: 'digestive-illness',
+    label: 'Digestive illness',
+    category: 'Gastrointestinal',
+    description: 'Mentions of stomach bugs, food poisoning, vomiting, or diarrhea.',
+    guidance: 'Remind users to stay hydrated and seek urgent care for dehydration or blood in stool.',
+    matchers: [
+      /stomach (bug|flu)/i,
+      /food poisoning/i,
+      /vomit(ing)?/i,
+      /diarr(hea|hoea)/i,
+      /nausea/i,
+      /queasy stomach/i,
+    ],
+  },
+  {
+    id: 'common-cold',
+    label: 'Common cold',
+    category: 'Upper respiratory',
+    description: 'Mentions of sore throat, runny or stuffy nose, and mild cough typical of a cold.',
+    guidance: 'Suggest rest, fluids, and monitoring for symptoms that escalate or persist.',
+    matchers: [
+      /(have|having|caught|catching|got|getting|coming down with) (a )?cold/i,
+      /runny nose/i,
+      /stuffy nose/i,
+      /nasal congestion/i,
+      /sore throat/i,
+      /post-nasal drip/i,
+    ],
+  },
+  {
+    id: 'skin-irritation',
+    label: 'Skin irritation',
+    category: 'Dermatology',
+    description: 'Reports of rashes, hives, eczema flare-ups, or other irritated skin.',
+    guidance: 'Encourage gentle skin care, avoiding triggers, and medical attention for spreading rashes.',
+    matchers: [
+      /skin rash/i,
+      /\brash(es)?\b/i,
+      /eczema/i,
+      /hives/i,
+      /itchy (skin|spots?)/i,
+    ],
+  },
+]
+
 const concernStats: Record<string, ConcernStat> = Object.fromEntries(
   concernDefinitions.map((definition) => [
     definition.id,
@@ -105,6 +197,17 @@ const concernStats: Record<string, ConcernStat> = Object.fromEntries(
     },
   ]),
 ) as Record<string, ConcernStat>
+
+const conditionStats: Record<string, ConditionStat> = Object.fromEntries(
+  conditionDefinitions.map((definition) => [
+    definition.id,
+    {
+      count: 0,
+      lastExample: null,
+      lastMentionAt: null,
+    },
+  ]),
+) as Record<string, ConditionStat>
 
 const RECENT_LIMIT = 25
 const recentInteractions: ChatInteraction[] = []
@@ -118,7 +221,7 @@ const truncateExample = (text: string): string => {
   return `${trimmed.slice(0, 157)}…`
 }
 
-const trackCommonConcerns = (userMessageContents: string[]) => {
+const trackConversationSignals = (userMessageContents: string[]) => {
   if (!userMessageContents.length) {
     return
   }
@@ -130,18 +233,29 @@ const trackCommonConcerns = (userMessageContents: string[]) => {
       return
     }
 
-    const matchedDefinitions = concernDefinitions.filter((definition) =>
+    const concernMatches = concernDefinitions.filter((definition) =>
       definition.matchers.some((matcher) => matcher.test(content)),
     )
 
-    if (matchedDefinitions.length === 0) {
+    const conditionMatches = conditionDefinitions.filter((definition) =>
+      definition.matchers.some((matcher) => matcher.test(content)),
+    )
+
+    if (concernMatches.length === 0 && conditionMatches.length === 0) {
       return
     }
 
     const example = truncateExample(content)
 
-    matchedDefinitions.forEach((definition) => {
+    concernMatches.forEach((definition) => {
       const stat = concernStats[definition.id]
+      stat.count += 1
+      stat.lastExample = example
+      stat.lastMentionAt = timestamp
+    })
+
+    conditionMatches.forEach((definition) => {
+      const stat = conditionStats[definition.id]
       stat.count += 1
       stat.lastExample = example
       stat.lastMentionAt = timestamp
@@ -173,7 +287,7 @@ export function recordChatMetrics({
   metrics.lastInteractionAt = Date.now()
 
   if (userMessageContents.length > 0) {
-    trackCommonConcerns(userMessageContents)
+    trackConversationSignals(userMessageContents)
   }
 
   recentInteractions.unshift({
@@ -232,6 +346,23 @@ export function getAnalyticsSummary() {
         }
       })
       .filter((concern) => concern.count > 0)
+      .sort((a, b) => b.count - a.count),
+    commonConditions: conditionDefinitions
+      .map((definition) => {
+        const stat = conditionStats[definition.id]
+        return {
+          id: definition.id,
+          label: definition.label,
+          category: definition.category,
+          description: definition.description,
+          guidance: definition.guidance,
+          count: stat.count,
+          share: totalUserMessages > 0 ? stat.count / totalUserMessages : 0,
+          lastExample: stat.lastExample,
+          lastMentionAt: stat.lastMentionAt ? new Date(stat.lastMentionAt).toISOString() : null,
+        }
+      })
+      .filter((condition) => condition.count > 0)
       .sort((a, b) => b.count - a.count),
   }
 }

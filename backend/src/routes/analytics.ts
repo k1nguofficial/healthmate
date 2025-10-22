@@ -215,6 +215,18 @@ analyticsRouter.get('/summary', (_req, res) => {
     lastMentionedAt: concern.lastMentionAt,
   }))
 
+  const conditions = summary.commonConditions.map((condition) => ({
+    id: condition.id,
+    label: condition.label,
+    category: condition.category,
+    description: condition.description,
+    guidance: condition.guidance,
+    count: condition.count,
+    share: condition.share ?? 0,
+    lastExample: condition.lastExample,
+    lastMentionedAt: condition.lastMentionAt,
+  }))
+
   const highlights = summary.totals.requests
     ? [
         {
@@ -248,6 +260,18 @@ analyticsRouter.get('/summary', (_req, res) => {
     })
   }
 
+  if (conditions.length > 0) {
+    const topCondition = conditions[0]
+    const sharePercent = Math.round((topCondition.share ?? 0) * 1000) / 10
+    highlights.unshift({
+      id: `top-condition-${topCondition.id}`,
+      title: `${topCondition.label} frequently mentioned`,
+      description: topCondition.lastExample
+        ? `Logged ${topCondition.count} times (${sharePercent}% of user messages). Sample context: “${topCondition.lastExample}”.`
+        : `Logged ${topCondition.count} times (${sharePercent}% of user messages) in recent chats.`,
+    })
+  }
+
   res.json({
     totals,
     charts,
@@ -256,6 +280,7 @@ analyticsRouter.get('/summary', (_req, res) => {
     updatedAt: summary.lastInteractionAt,
     highlights,
     concerns,
+    conditions,
   })
 })
 

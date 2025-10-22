@@ -48,7 +48,7 @@ type RawTrend = {
   description?: string
 }
 
-type RawConcern = {
+type RawTopic = {
   id?: string
   label?: string
   category?: string
@@ -60,6 +60,9 @@ type RawConcern = {
   share?: number
 }
 
+type RawConcern = RawTopic
+type RawCondition = RawTopic
+
 type AnalyticsSummary = {
   totals?: RawTotals
   charts?: RawCharts
@@ -68,6 +71,7 @@ type AnalyticsSummary = {
   updatedAt?: string
   highlights?: Array<{ id?: string; title?: string; description?: string }>
   concerns?: RawConcern[]
+  conditions?: RawCondition[]
 }
 
 type NormalizedTotal = {
@@ -92,7 +96,7 @@ type NormalizedTrend = {
   description?: string
 }
 
-type NormalizedConcern = {
+type NormalizedTopic = {
   id: string
   label: string
   category: string
@@ -103,6 +107,9 @@ type NormalizedConcern = {
   lastMentionedAt?: string
   share: number
 }
+
+type NormalizedConcern = NormalizedTopic
+type NormalizedCondition = NormalizedTopic
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
@@ -218,24 +225,41 @@ function normalizeTrends(trends: RawTrend[] | undefined, totals: NormalizedTotal
     }))
 }
 
-function normalizeConcerns(concerns: RawConcern[] | undefined): NormalizedConcern[] {
-  if (!concerns) return []
+function normalizeTopics(items: RawTopic[] | undefined, fallbackPrefix: string, limit?: number): NormalizedTopic[] {
+  if (!items) return []
 
-  return concerns
-    .map((concern, index) => ({
-      id: concern.id || `concern-${index}`,
-      label: concern.label || formatLabel(concern.id || `Concern ${index + 1}`),
-      category: concern.category || 'General',
-      description: concern.description,
-      guidance: concern.guidance,
-      count: typeof concern.count === 'number' ? concern.count : 0,
-      lastExample: concern.lastExample,
-      lastMentionedAt: concern.lastMentionedAt,
-      share: typeof concern.share === 'number' && Number.isFinite(concern.share) ? Math.max(concern.share, 0) : 0,
-    }))
-    .filter((concern) => concern.count > 0)
+  const normalized = items
+    .map((item, index) => {
+      const fallbackId = `${fallbackPrefix}-${index}`
+      const fallbackLabel = `${formatLabel(fallbackPrefix)} ${index + 1}`
+      return {
+        id: item.id || fallbackId,
+        label: item.label || formatLabel(item.id || fallbackLabel),
+        category: item.category || 'General',
+        description: item.description,
+        guidance: item.guidance,
+        count: typeof item.count === 'number' ? item.count : 0,
+        lastExample: item.lastExample,
+        lastMentionedAt: item.lastMentionedAt,
+        share: typeof item.share === 'number' && Number.isFinite(item.share) ? Math.max(item.share, 0) : 0,
+      }
+    })
+    .filter((topic) => topic.count > 0)
     .sort((a, b) => b.count - a.count || b.share - a.share)
-    .slice(0, 6)
+
+  if (typeof limit === 'number') {
+    return normalized.slice(0, limit)
+  }
+
+  return normalized
+}
+
+function normalizeConcerns(concerns: RawConcern[] | undefined): NormalizedConcern[] {
+  return normalizeTopics(concerns, 'concern', 6)
+}
+
+function normalizeConditions(conditions: RawCondition[] | undefined): NormalizedCondition[] {
+  return normalizeTopics(conditions, 'condition', 6)
 }
 
 function formatValue(value: number | string) {
@@ -345,6 +369,7 @@ function DashboardPage() {
   const charts = useMemo(() => normalizeCharts(summary?.charts), [summary?.charts])
   const trends = useMemo(() => normalizeTrends(summary?.trends, totals), [summary?.trends, totals])
   const concerns = useMemo(() => normalizeConcerns(summary?.concerns), [summary?.concerns])
+  const conditions = useMemo(() => normalizeConditions(summary?.conditions), [summary?.conditions])
   const updatedAt = formatTimestamp(summary?.updatedAt)
 
   return (
@@ -446,6 +471,57 @@ function DashboardPage() {
                               </li>
                             ))}
                           </ul>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {conditions.length > 0 && (
+                <section className="dashboard__section dashboard__conditions" aria-label="Condition insights">
+                  <header className="dashboard__section-heading">
+                    <div>
+                      <h2>Condition insights</h2>
+                      <p>How often users reference specific illnesses or diagnoses during their chats with HealthMate.</p>
+                    </div>
+                  </header>
+                  <div className="dashboard__condition-grid">
+                    {conditions.map((condition) => {
+                      const lastMentionLabel = formatTimestamp(condition.lastMentionedAt)
+                      const shareLabel = formatShare(condition.share)
+                      const sharePercent = Math.max(0, Math.min(100, Math.round(condition.share * 1000) / 10))
+                      const shareFillWidth = Math.round(sharePercent)
+                      return (
+                        <article key={condition.id} className="dashboard__condition-card">
+                          <header>
+                            <span className="dashboard__condition-chip">{condition.category}</span>
+                            <h3>{condition.label}</h3>
+                          </header>
+                          <div className="dashboard__condition-metrics">
+                            <span className="dashboard__condition-count">
+                              {condition.count} {condition.count === 1 ? 'mention' : 'mentions'}
+                            </span>
+                            {shareLabel && <span className="dashboard__condition-share-label">{shareLabel}</span>}
+                          </div>
+                          <div className="dashboard__condition-share">
+                            <div className="dashboard__condition-share-bar" aria-hidden="true">
+                              <div className="dashboard__condition-share-fill" style={{ width: `${shareFillWidth}%` }} />
+                            </div>
+                            <span className="dashboard__condition-share-value">{numberFormatter.format(sharePercent)}%</span>
+                          </div>
+                          {condition.description && (
+                            <p className="dashboard__condition-description">{condition.description}</p>
+                          )}
+                          {condition.lastExample && (
+                            <p className="dashboard__condition-example">“{condition.lastExample}”</p>
+                          )}
+                          {condition.guidance && (
+                            <p className="dashboard__condition-guidance">{condition.guidance}</p>
+                          )}
+                          {lastMentionLabel && (
+                            <span className="dashboard__condition-meta">Last logged {lastMentionLabel}</span>
+                          )}
                         </article>
                       )
                     })}
@@ -558,6 +634,7 @@ function DashboardPage() {
                 charts.length === 0 &&
                 trends.length === 0 &&
                 concerns.length === 0 &&
+                conditions.length === 0 &&
                 !summary?.highlights?.length && (
                   <section className="dashboard__state dashboard__state--empty">
                     <p>No analytics data available yet. Check back soon!</p>
