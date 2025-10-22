@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
+import { buildApiUrl } from '../config/api'
 import './DashboardPage.css'
 
 type RawTotalValue =
@@ -218,32 +219,67 @@ function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadSummary = useCallback(
-    (signal?: AbortSignal) => {
+    async (signal?: AbortSignal) => {
       setLoading(true)
       setError(null)
 
       const requestInit: RequestInit = signal ? { signal } : {}
 
-      fetch('/api/analytics/summary', requestInit)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error('Unable to load analytics summary')
+      try {
+        const response = await fetch(buildApiUrl('/api/analytics/summary'), requestInit)
+        const contentType = response.headers.get('content-type') ?? ''
+        const bodyText = await response.text()
+
+        if (signal?.aborted) return
+
+        if (!response.ok) {
+          let message = 'Analytics data is temporarily unavailable. Please try again.'
+
+          if (contentType.includes('application/json')) {
+            try {
+              const payload = JSON.parse(bodyText) as { error?: string; message?: string }
+              message = payload.error || payload.message || message
+            } catch (parseError) {
+              console.error('Failed to parse analytics error response:', parseError)
+            }
+          } else if (bodyText) {
+            console.error('Analytics error response:', bodyText)
           }
-          return response.json() as Promise<AnalyticsSummary>
-        })
-        .then((data) => {
+
+          throw new Error(message)
+        }
+
+        if (!contentType.includes('application/json')) {
+          console.error('Analytics summary returned unexpected content type:', contentType)
+          if (bodyText) {
+            console.error('Analytics summary response body:', bodyText)
+          }
+          throw new Error('Analytics data is temporarily unavailable. Please try again.')
+        }
+
+        try {
+          const parsedSummary = JSON.parse(bodyText) as AnalyticsSummary
           if (signal?.aborted) return
-          setSummary(data)
-        })
-        .catch((err) => {
-          if (err.name === 'AbortError') return
-          setError(err.message || 'Something went wrong')
-        })
-        .finally(() => {
-          if (!signal?.aborted) {
-            setLoading(false)
-          }
-        })
+          setSummary(parsedSummary)
+        } catch (parseError) {
+          console.error('Failed to parse analytics summary response:', parseError, bodyText)
+          throw new Error('Analytics data is temporarily unavailable. Please try again.')
+        }
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') return
+
+        const fallbackMessage = 'Analytics data is temporarily unavailable. Please try again.'
+        if (error instanceof Error) {
+          const message = error.name === 'TypeError' ? fallbackMessage : error.message
+          setError(message || fallbackMessage)
+        } else {
+          setError(fallbackMessage)
+        }
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false)
+        }
+      }
     },
     [],
   )
