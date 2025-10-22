@@ -12,6 +12,14 @@
   gap: 1rem;
 }
 
+.chat__eyebrow {
+  margin: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(10, 127, 177, 0.8);
+}
+
 .chat__title {
   margin: 0;
   font-size: clamp(2rem, 2vw + 1rem, 2.75rem);
@@ -64,41 +72,6 @@
 .chat__secondary:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 24px rgba(15, 30, 46, 0.12);
-}
-
-.chat__panel {
-  background: #fff;
-  border-radius: 28px;
-  padding: 2.5rem;
-  box-shadow: 0 18px 42px rgba(12, 104, 152, 0.15);
-  display: grid;
-  gap: 1rem;
-  position: relative;
-}
-
-.chat__message {
-  padding: 1rem 1.25rem;
-  border-radius: 20px;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  max-width: 420px;
-}
-
-.chat__message--user {
-  background: rgba(10, 127, 177, 0.12);
-  color: #0a4466;
-  transform: translateX(40px);
-}
-
-.chat__message--ai {
-  background: rgba(12, 104, 152, 0.08);
-  color: #0b1f33;
-  transform: translateX(-40px);
-}
-
-.chat__message--tip {
-  background: rgba(54, 192, 160, 0.14);
-  color: #0f5132;
 }
 
 @media (min-width: 900px) {

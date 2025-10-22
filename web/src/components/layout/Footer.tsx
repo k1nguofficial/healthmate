@@ -1,3 +1,4 @@
+import SmoothScrollLink from '../common/SmoothScrollLink'
 import './Footer.css'
 
 const footerLinks = [
@@ -20,9 +21,9 @@ function Footer() {
         <ul className="footer__links">
           {footerLinks.map((link) => (
             <li key={link.href}>
-              <a className="footer__link" href={link.href}>
+              <SmoothScrollLink className="footer__link" href={link.href}>
                 {link.label}
-              </a>
+              </SmoothScrollLink>
             </li>
           ))}
         </ul>

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import SmoothScrollLink from '../common/SmoothScrollLink'
 import './Hero.css'
 
 function Hero() {
@@ -11,12 +13,12 @@ function Hero() {
           make informed decisions before visiting a clinic.
         </p>
         <div className="hero__actions">
-          <a className="hero__cta" href="#chat">
+          <Link className="hero__cta" to="/chat">
             Start Chat
-          </a>
-          <a className="hero__secondary" href="#resources">
+          </Link>
+          <SmoothScrollLink className="hero__secondary" href="#resources">
             Explore Resources
-          </a>
+          </SmoothScrollLink>
         </div>
       </div>
       <div className="hero__visual" role="img" aria-label="Illustration of a digital health assistant">

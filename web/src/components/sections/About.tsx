@@ -43,8 +43,8 @@ function About() {
           <article className="about__panel">
             <h3>Technology Stack</h3>
             <p className="about__stack">
-              Built on the MERN stack — React, Node.js, Express, and MongoDB — with LLM integrations for medical
-              language intelligence. Designed in Figma for a polished, accessible experience.
+              Built with a React + Vite frontend and a TypeScript Express backend powered by Groq LLM integrations for
+              medical language intelligence. Designed in Figma for a polished, accessible experience.
             </p>
           </article>
         </div>

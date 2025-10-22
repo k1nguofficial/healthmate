@@ -1,0 +1,221 @@
+.chat-widget {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.chat__panel {
+  background: #fff;
+  border-radius: 28px;
+  padding: 2.5rem;
+  box-shadow: 0 18px 42px rgba(12, 104, 152, 0.15);
+  display: grid;
+  gap: 1.25rem;
+  position: relative;
+}
+
+.chat-widget__messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.75rem;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.chat__message {
+  padding: 1rem 1.25rem;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0;
+  box-shadow: 0 2px 6px rgba(12, 104, 152, 0.12);
+  background: rgba(12, 104, 152, 0.08);
+  color: #0b1f33;
+  white-space: normal;
+}
+
+.chat__message p {
+  margin: 0 0 0.5rem;
+}
+
+.chat__message p:last-child {
+  margin-bottom: 0;
+}
+
+.chat__message ul {
+  margin: 0.25rem 0 0.25rem 1.25rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.chat__message li {
+  list-style: disc;
+  color: inherit;
+}
+
+.chat-widget__disclaimer {
+  background: rgba(185, 56, 43, 0.12);
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+  margin: 0;
+  color: #7a271a;
+}
+
+.chat-widget__disclaimer strong {
+  color: #b9382b;
+}
+
+.chat__message--user {
+  background: rgba(10, 127, 177, 0.12);
+  color: #0a4466;
+  margin-left: auto;
+}
+
+.chat__message--ai {
+  margin-right: auto;
+}
+
+.chat-widget__messages::-webkit-scrollbar {
+  width: 7px;
+}
+
+.chat-widget__messages::-webkit-scrollbar-thumb {
+  background: rgba(12, 104, 152, 0.2);
+  border-radius: 999px;
+}
+
+.chat-widget__form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chat-widget__label {
+  font-weight: 600;
+  color: rgba(11, 31, 51, 0.9);
+}
+
+.chat-widget__textarea {
+  width: 100%;
+  border: 1px solid rgba(10, 127, 177, 0.25);
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
+  line-height: 1.55;
+  font: inherit;
+  resize: vertical;
+  min-height: 120px;
+  background: #fdfefe;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-widget__textarea:focus {
+  outline: none;
+  border-color: rgba(10, 127, 177, 0.55);
+  box-shadow: 0 0 0 3px rgba(10, 127, 177, 0.2);
+}
+
+.chat-widget__textarea:disabled {
+  opacity: 0.7;
+  background: rgba(241, 249, 255, 0.8);
+}
+
+.chat-widget__actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.chat-widget__submit {
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0a7fb1, #3ec6f4);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-widget__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(12, 104, 152, 0.25);
+}
+
+.chat-widget__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.chat-widget__reset {
+  border: none;
+  background: none;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.chat-widget__reset:hover:not(:disabled) {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.chat-widget__reset:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.chat-widget__status {
+  font-size: 0.9rem;
+  color: rgba(11, 31, 51, 0.65);
+  font-style: italic;
+  padding-left: 1rem;
+}
+
+.chat-widget__error {
+  margin: 0;
+  color: #b9382b;
+  font-size: 0.9rem;
+}
+
+.chat-widget__meta {
+  background: rgba(12, 104, 152, 0.06);
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(11, 31, 51, 0.75);
+}
+
+.chat-widget__meta h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #0a4466;
+}
+
+.chat-widget__meta summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #0a7fb1;
+}
+
+.chat-widget__summary {
+  white-space: pre-wrap;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .chat-widget__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-widget__reset {
+    text-align: center;
+  }
+}
