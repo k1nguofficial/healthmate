@@ -5,6 +5,7 @@ import './Navbar.css'
 const navLinks = [
   { label: 'Home', href: '#home', type: 'hash' as const },
   { label: 'Chat', href: '/chat', type: 'route' as const },
+  { label: 'Dashboard', href: '/dashboard', type: 'route' as const },
   { label: 'Resources', href: '#resources', type: 'hash' as const },
   { label: 'About', href: '#about', type: 'hash' as const },
   { label: 'Contact', href: '#contact', type: 'hash' as const },

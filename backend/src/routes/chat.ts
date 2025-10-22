@@ -3,6 +3,8 @@ import type { NextFunction, Request, Response } from 'express'
 import Groq from 'groq-sdk'
 import { z } from 'zod'
 import { groqClient } from '../lib/groq'
+import { appendChatLog } from '../lib/chatLogStore'
+import { recordChatMetrics } from '../lib/analytics'
 import { env } from '../env'
 
 const chatRouter = Router()
@@ -36,6 +38,8 @@ const systemPrompt = `You are HealthMate, an AI health companion that offers gen
 - Respect privacy: do not ask for identifying details beyond health-related context.`.trim()
 
 chatRouter.post('/', async (req, res, next) => {
+  const startedAt = Date.now()
+
   const parseResult = chatRequestSchema.safeParse(req.body)
 
   if (!parseResult.success) {
@@ -67,12 +71,48 @@ chatRouter.post('/', async (req, res, next) => {
       })
     }
 
+    const responseTimeMs = Date.now() - startedAt
+
+    recordChatMetrics({
+      userMessages: limitedMessages.filter((message) => message.role === 'user').length,
+      promptTokens: completion.usage?.prompt_tokens ?? null,
+      completionTokens: completion.usage?.completion_tokens ?? null,
+      responseTimeMs,
+    })
+
+    try {
+      await appendChatLog({
+        timestamp: new Date().toISOString(),
+        messageCount: messages.length,
+        model: completion.model,
+        promptTokens: completion.usage?.prompt_tokens,
+        completionTokens: completion.usage?.completion_tokens,
+        totalTokens: completion.usage?.total_tokens,
+        status: 'success',
+      })
+    } catch (logError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to persist chat log entry', logError)
+    }
+
     return res.json({
       reply,
       model: completion.model,
       usage: completion.usage,
     })
   } catch (error) {
+    try {
+      await appendChatLog({
+        timestamp: new Date().toISOString(),
+        messageCount: messages.length,
+        status: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } catch (logError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to persist chat log entry', logError)
+    }
+
     return next(error)
   }
 })
