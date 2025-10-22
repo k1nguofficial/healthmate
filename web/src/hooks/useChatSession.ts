@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { buildApiUrl } from '../config/api'
 
 export type ChatRole = 'user' | 'assistant'
 
@@ -14,8 +15,6 @@ export type ChatState = {
   error: string | null
   input: string
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5050'
 
 const initialMessages: ChatMessage[] = [
   {
@@ -84,7 +83,7 @@ export function useChatSession() {
     abortControllerRef.current = controller
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      const response = await fetch(buildApiUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

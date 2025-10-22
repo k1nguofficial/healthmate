@@ -73,8 +73,11 @@ chatRouter.post('/', async (req, res, next) => {
 
     const responseTimeMs = Date.now() - startedAt
 
+    const userOnlyMessages = limitedMessages.filter((message) => message.role === 'user')
+
     recordChatMetrics({
-      userMessages: limitedMessages.filter((message) => message.role === 'user').length,
+      userMessages: userOnlyMessages.length,
+      userMessageContents: userOnlyMessages.map((message) => message.content),
       promptTokens: completion.usage?.prompt_tokens ?? null,
       completionTokens: completion.usage?.completion_tokens ?? null,
       responseTimeMs,

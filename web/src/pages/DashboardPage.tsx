@@ -48,6 +48,18 @@ type RawTrend = {
   description?: string
 }
 
+type RawConcern = {
+  id?: string
+  label?: string
+  category?: string
+  description?: string
+  guidance?: string
+  count?: number
+  lastExample?: string
+  lastMentionedAt?: string
+  share?: number
+}
+
 type AnalyticsSummary = {
   totals?: RawTotals
   charts?: RawCharts
@@ -55,6 +67,7 @@ type AnalyticsSummary = {
   timeframe?: string
   updatedAt?: string
   highlights?: Array<{ id?: string; title?: string; description?: string }>
+  concerns?: RawConcern[]
 }
 
 type NormalizedTotal = {
@@ -77,6 +90,18 @@ type NormalizedTrend = {
   change?: number
   direction: 'up' | 'down' | 'flat'
   description?: string
+}
+
+type NormalizedConcern = {
+  id: string
+  label: string
+  category: string
+  description?: string
+  guidance?: string
+  count: number
+  lastExample?: string
+  lastMentionedAt?: string
+  share: number
 }
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
@@ -193,6 +218,26 @@ function normalizeTrends(trends: RawTrend[] | undefined, totals: NormalizedTotal
     }))
 }
 
+function normalizeConcerns(concerns: RawConcern[] | undefined): NormalizedConcern[] {
+  if (!concerns) return []
+
+  return concerns
+    .map((concern, index) => ({
+      id: concern.id || `concern-${index}`,
+      label: concern.label || formatLabel(concern.id || `Concern ${index + 1}`),
+      category: concern.category || 'General',
+      description: concern.description,
+      guidance: concern.guidance,
+      count: typeof concern.count === 'number' ? concern.count : 0,
+      lastExample: concern.lastExample,
+      lastMentionedAt: concern.lastMentionedAt,
+      share: typeof concern.share === 'number' && Number.isFinite(concern.share) ? Math.max(concern.share, 0) : 0,
+    }))
+    .filter((concern) => concern.count > 0)
+    .sort((a, b) => b.count - a.count || b.share - a.share)
+    .slice(0, 6)
+}
+
 function formatValue(value: number | string) {
   if (typeof value === 'number') {
     return numberFormatter.format(value)
@@ -204,6 +249,11 @@ function formatChange(change: number | undefined) {
   if (typeof change !== 'number') return null
   const formatted = `${change > 0 ? '+' : ''}${numberFormatter.format(change)}%`
   return formatted
+}
+
+function formatShare(share: number) {
+  if (!Number.isFinite(share) || share <= 0) return null
+  return `${numberFormatter.format(share * 100)}% of user messages`
 }
 
 function formatTimestamp(timestamp?: string) {
@@ -294,102 +344,169 @@ function DashboardPage() {
   const totals = useMemo(() => normalizeTotals(summary?.totals), [summary?.totals])
   const charts = useMemo(() => normalizeCharts(summary?.charts), [summary?.charts])
   const trends = useMemo(() => normalizeTrends(summary?.trends, totals), [summary?.trends, totals])
+  const concerns = useMemo(() => normalizeConcerns(summary?.concerns), [summary?.concerns])
   const updatedAt = formatTimestamp(summary?.updatedAt)
 
   return (
     <>
       <Navbar />
       <main className="dashboard">
-        <header className="dashboard__header">
-          <div>
-            <p className="dashboard__eyebrow">Analytics</p>
-            <h1 className="dashboard__title">HealthMate Dashboard</h1>
-            <p className="dashboard__subtitle">
-              Track engagement, session quality, and performance metrics to understand how users interact with the HealthMate
-              assistant.
-            </p>
-          </div>
-          <div className="dashboard__meta">
-            {summary?.timeframe && <span className="dashboard__timeframe">{summary.timeframe}</span>}
-            {updatedAt && <span className="dashboard__updated">Updated {updatedAt}</span>}
-          </div>
-        </header>
+        <div className="dashboard__container">
+          <header className="dashboard__header">
+            <div className="dashboard__intro">
+              <p className="dashboard__eyebrow">Analytics</p>
+              <h1 className="dashboard__title">HealthMate Dashboard</h1>
+              <p className="dashboard__subtitle">
+                Track chat volume, latency, and the real-world symptoms people bring to the HealthMate assistant.
+              </p>
+            </div>
+            <div className="dashboard__meta">
+              {summary?.timeframe && <span className="dashboard__timeframe">{summary.timeframe}</span>}
+              {updatedAt && <span className="dashboard__updated">Updated {updatedAt}</span>}
+            </div>
+          </header>
 
-        {loading && (
-          <section className="dashboard__state" aria-live="polite">
-            <div className="dashboard__spinner" aria-hidden="true" />
-            <p>Loading analytics…</p>
-          </section>
-        )}
+          {loading && (
+            <section className="dashboard__state" aria-live="polite">
+              <div className="dashboard__spinner" aria-hidden="true" />
+              <p>Loading analytics…</p>
+            </section>
+          )}
 
-        {error && !loading && (
-          <section className="dashboard__state dashboard__state--error" role="alert">
-            <p>{error}</p>
-            <button
-              type="button"
-              className="dashboard__retry"
-              disabled={loading}
-              onClick={() => loadSummary()}
-            >
-              Try again
-            </button>
-          </section>
-        )}
+          {error && !loading && (
+            <section className="dashboard__state dashboard__state--error" role="alert">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="dashboard__retry"
+                disabled={loading}
+                onClick={() => loadSummary()}
+              >
+                Try again
+              </button>
+            </section>
+          )}
 
-        {!loading && !error && (
-          <>
-            {totals.length > 0 && (
-              <section className="dashboard__totals" aria-label="Key metrics">
-                {totals.map((total) => {
-                  const formattedChange = formatChange(total.change)
-                  return (
-                    <article key={total.id} className="dashboard__total-card">
-                      <h2>{total.label}</h2>
-                      <p className="dashboard__total-value">{formatValue(total.value)}</p>
-                      {formattedChange && (
-                        <span className={`dashboard__change dashboard__change--${total.direction}`}>
-                          {total.direction === 'up' && '▲'}
-                          {total.direction === 'down' && '▼'}
-                          {total.direction === 'flat' && '■'} {formattedChange}
-                        </span>
-                      )}
-                    </article>
-                  )
-                })}
-              </section>
-            )}
+          {!loading && !error && (
+            <>
+              {totals.length > 0 && (
+                <section className="dashboard__section dashboard__totals" aria-label="Key metrics">
+                  <header className="dashboard__section-heading">
+                    <div>
+                      <h2>Overview</h2>
+                      <p>High-level engagement metrics pulled directly from recent HealthMate conversations.</p>
+                    </div>
+                  </header>
+                  <div className="dashboard__totals-grid">
+                    {totals.map((total) => {
+                      const formattedChange = formatChange(total.change)
+                      return (
+                        <article key={total.id} className="dashboard__total-card">
+                          <h2>{total.label}</h2>
+                          <p className="dashboard__total-value">{formatValue(total.value)}</p>
+                          {formattedChange && (
+                            <span className={`dashboard__change dashboard__change--${total.direction}`}>
+                              {total.direction === 'up' && '▲'}
+                              {total.direction === 'down' && '▼'}
+                              {total.direction === 'flat' && '■'} {formattedChange}
+                            </span>
+                          )}
+                        </article>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
 
-            {charts.length > 0 && (
-              <section className="dashboard__charts">
-                {charts.map((chart) => {
-                  const maxValue = Math.max(...chart.points.map((point) => point.value), 0) || 1
-                  return (
-                    <article key={chart.id} className="dashboard__chart-card">
-                      <h2>{chart.title}</h2>
-                      <ul>
-                        {chart.points.map((point) => (
-                          <li key={point.label}>
-                            <span className="dashboard__chart-label">{point.label}</span>
-                            <div className="dashboard__chart-bar" aria-hidden="true">
-                              <div
-                                className="dashboard__chart-bar-fill"
-                                style={{ width: `${Math.round((point.value / maxValue) * 100)}%` }}
-                              />
+              {charts.length > 0 && (
+                <section className="dashboard__section dashboard__charts" aria-label="Charts">
+                  <header className="dashboard__section-heading">
+                    <div>
+                      <h2>Recent performance</h2>
+                      <p>Visualize how response times and token usage shift across the latest sessions.</p>
+                    </div>
+                  </header>
+                  <div className="dashboard__charts-grid">
+                    {charts.map((chart) => {
+                      const maxValue = Math.max(...chart.points.map((point) => point.value), 0) || 1
+                      return (
+                        <article key={chart.id} className="dashboard__chart-card">
+                          <h2>{chart.title}</h2>
+                          <ul>
+                            {chart.points.map((point) => (
+                              <li key={point.label}>
+                                <span className="dashboard__chart-label">{point.label}</span>
+                                <div className="dashboard__chart-bar" aria-hidden="true">
+                                  <div
+                                    className="dashboard__chart-bar-fill"
+                                    style={{ width: `${Math.round((point.value / maxValue) * 100)}%` }}
+                                  />
+                                </div>
+                                <span className="dashboard__chart-value">{numberFormatter.format(point.value)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {concerns.length > 0 && (
+                <section className="dashboard__section dashboard__concerns" aria-label="Common chat topics">
+                  <header className="dashboard__section-heading">
+                    <div>
+                      <h2>Common symptom mentions</h2>
+                      <p>The themes HealthMate hears most often, based on recent user messages.</p>
+                    </div>
+                  </header>
+                  <div className="dashboard__concern-grid">
+                    {concerns.map((concern) => {
+                      const lastMentionLabel = formatTimestamp(concern.lastMentionedAt)
+                      const shareLabel = formatShare(concern.share)
+                      const sharePercent = Math.max(0, Math.min(100, Math.round(concern.share * 1000) / 10))
+                      const shareFillWidth = Math.round(sharePercent)
+                      return (
+                        <article key={concern.id} className="dashboard__concern-card">
+                          <header>
+                            <span className="dashboard__concern-chip">{concern.category}</span>
+                            <h3>{concern.label}</h3>
+                            <span className="dashboard__concern-count">
+                              {concern.count} {concern.count === 1 ? 'mention' : 'mentions'}
+                            </span>
+                          </header>
+                          <div className="dashboard__concern-share">
+                            <div className="dashboard__concern-share-bar" aria-hidden="true">
+                              <div className="dashboard__concern-share-fill" style={{ width: `${shareFillWidth}%` }} />
                             </div>
-                            <span className="dashboard__chart-value">{numberFormatter.format(point.value)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </article>
-                  )
-                })}
-              </section>
-            )}
+                            <span className="dashboard__concern-share-value">{numberFormatter.format(sharePercent)}%</span>
+                          </div>
+                          {shareLabel && <p className="dashboard__concern-share-label">{shareLabel}</p>}
+                          {concern.description && <p className="dashboard__concern-description">{concern.description}</p>}
+                          {concern.lastExample && (
+                            <p className="dashboard__concern-example">“{concern.lastExample}”</p>
+                          )}
+                          {concern.guidance && <p className="dashboard__concern-guidance">{concern.guidance}</p>}
+                          {lastMentionLabel && (
+                            <span className="dashboard__concern-meta">Last mentioned {lastMentionLabel}</span>
+                          )}
+                        </article>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
 
-            {trends.length > 0 && (
-              <section className="dashboard__trends" aria-label="Trends">
-                <h2>Trend insights</h2>
-                <div className="dashboard__trends-grid">
+              {trends.length > 0 && (
+                <section className="dashboard__section dashboard__trends" aria-label="Trends">
+                  <header className="dashboard__section-heading">
+                    <div>
+                      <h2>Trend insights</h2>
+                      <p>Quick pulse on whether response times and token usage are improving over time.</p>
+                    </div>
+                  </header>
+                  <div className="dashboard__trends-grid">
                   {trends.map((trend) => {
                     const changeLabel = formatChange(trend.change)
                     return (
@@ -414,31 +531,41 @@ function DashboardPage() {
                       </article>
                     )
                   })}
-                </div>
-              </section>
-            )}
+                  </div>
+                </section>
+              )}
 
-            {summary?.highlights && summary.highlights.length > 0 && (
-              <section className="dashboard__highlights" aria-label="Highlights">
-                <h2>Highlights</h2>
-                <ul>
-                  {summary.highlights.map((highlight, index) => (
-                    <li key={highlight.id || `highlight-${index}`}>
-                      <strong>{highlight.title}</strong>
-                      {highlight.description && <p>{highlight.description}</p>}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+              {summary?.highlights && summary.highlights.length > 0 && (
+                <section className="dashboard__section dashboard__highlights" aria-label="Highlights">
+                  <header className="dashboard__section-heading">
+                    <div>
+                      <h2>Highlights</h2>
+                      <p>Snapshot callouts summarizing noteworthy changes from the latest data pull.</p>
+                    </div>
+                  </header>
+                  <ul>
+                    {summary.highlights.map((highlight, index) => (
+                      <li key={highlight.id || `highlight-${index}`}>
+                        <strong>{highlight.title}</strong>
+                        {highlight.description && <p>{highlight.description}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
-            {totals.length === 0 && charts.length === 0 && trends.length === 0 && !summary?.highlights?.length && (
-              <section className="dashboard__state dashboard__state--empty">
-                <p>No analytics data available yet. Check back soon!</p>
-              </section>
-            )}
-          </>
-        )}
+              {totals.length === 0 &&
+                charts.length === 0 &&
+                trends.length === 0 &&
+                concerns.length === 0 &&
+                !summary?.highlights?.length && (
+                  <section className="dashboard__state dashboard__state--empty">
+                    <p>No analytics data available yet. Check back soon!</p>
+                  </section>
+                )}
+            </>
+          )}
+        </div>
       </main>
       <Footer />
     </>

@@ -203,6 +203,18 @@ analyticsRouter.get('/summary', (_req, res) => {
 
   const totalTokens = summary.totals.promptTokens + summary.totals.completionTokens
 
+  const concerns = summary.commonConcerns.map((concern) => ({
+    id: concern.id,
+    label: concern.label,
+    category: concern.category,
+    description: concern.description,
+    guidance: concern.guidance,
+    count: concern.count,
+    share: concern.share ?? 0,
+    lastExample: concern.lastExample,
+    lastMentionedAt: concern.lastMentionAt,
+  }))
+
   const highlights = summary.totals.requests
     ? [
         {
@@ -224,6 +236,18 @@ analyticsRouter.get('/summary', (_req, res) => {
         },
       ]
 
+  if (concerns.length > 0) {
+    const topConcern = concerns[0]
+    const sharePercent = Math.round((topConcern.share ?? 0) * 1000) / 10
+    highlights.unshift({
+      id: `top-concern-${topConcern.id}`,
+      title: `${topConcern.label} is trending`,
+      description: topConcern.lastExample
+        ? `Mentioned ${topConcern.count} times (${sharePercent}% of user messages). Recent example: “${topConcern.lastExample}”.`
+        : `Mentioned ${topConcern.count} times (${sharePercent}% of user messages) in recent chats.`,
+    })
+  }
+
   res.json({
     totals,
     charts,
@@ -231,6 +255,7 @@ analyticsRouter.get('/summary', (_req, res) => {
     timeframe,
     updatedAt: summary.lastInteractionAt,
     highlights,
+    concerns,
   })
 })
 

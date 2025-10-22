@@ -6,11 +6,15 @@ const resolvedBaseUrl = rawBaseUrl && rawBaseUrl.length > 0
     : typeof window !== 'undefined'
       ? window.location.origin
       : ''
+
 const sanitizedBaseUrl = resolvedBaseUrl.replace(/\/+$/, '')
+
 export const API_BASE_URL = sanitizedBaseUrl
+
 export function buildApiUrl(path: string): string {
   if (!path.startsWith('/')) {
     path = `/${path}`
   }
+
   return `${API_BASE_URL}${path}`
 }
