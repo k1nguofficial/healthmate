@@ -265,6 +265,7 @@ const trackConversationSignals = (userMessageContents: string[]) => {
 
 export type ChatMetricsPayload = {
   userMessages: number
+  conversationUserMessages?: number
   userMessageContents?: string[]
   promptTokens?: number | null
   completionTokens?: number | null
@@ -273,13 +274,16 @@ export type ChatMetricsPayload = {
 
 export function recordChatMetrics({
   userMessages,
+  conversationUserMessages,
   userMessageContents = [],
   promptTokens,
   completionTokens,
   responseTimeMs,
 }: ChatMetricsPayload) {
+  const incrementingMessages = Number.isFinite(userMessages) ? Math.max(0, Math.floor(userMessages)) : 0
+
   metrics.totalRequests += 1
-  metrics.totalUserMessages += userMessages
+  metrics.totalUserMessages += incrementingMessages
   metrics.totalAssistantReplies += 1
   metrics.totalPromptTokens += promptTokens ?? 0
   metrics.totalCompletionTokens += completionTokens ?? 0
@@ -290,9 +294,13 @@ export function recordChatMetrics({
     trackConversationSignals(userMessageContents)
   }
 
+  const recordedUserMessages = Number.isFinite(conversationUserMessages)
+    ? Math.max(0, Math.floor(conversationUserMessages ?? 0))
+    : incrementingMessages
+
   recentInteractions.unshift({
     timestamp: metrics.lastInteractionAt,
-    userMessages,
+    userMessages: recordedUserMessages,
     promptTokens: promptTokens ?? null,
     completionTokens: completionTokens ?? null,
     responseTimeMs,

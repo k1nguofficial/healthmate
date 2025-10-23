@@ -74,10 +74,13 @@ chatRouter.post('/', async (req, res, next) => {
     const responseTimeMs = Date.now() - startedAt
 
     const userOnlyMessages = limitedMessages.filter((message) => message.role === 'user')
+    const latestUserMessage = userOnlyMessages[userOnlyMessages.length - 1]
+    const latestUserMessageContents = latestUserMessage ? [latestUserMessage.content] : []
 
     recordChatMetrics({
-      userMessages: userOnlyMessages.length,
-      userMessageContents: userOnlyMessages.map((message) => message.content),
+      userMessages: latestUserMessageContents.length,
+      conversationUserMessages: userOnlyMessages.length,
+      userMessageContents: latestUserMessageContents,
       promptTokens: completion.usage?.prompt_tokens ?? null,
       completionTokens: completion.usage?.completion_tokens ?? null,
       responseTimeMs,
