@@ -210,7 +210,88 @@ const conditionStats: Record<string, ConditionStat> = Object.fromEntries(
 ) as Record<string, ConditionStat>
 
 const RECENT_LIMIT = 25
+const SESSION_PROGRESS_LIMIT = 200
+
 const recentInteractions: ChatInteraction[] = []
+const sessionProgress = new Map<string, number>()
+
+const upsertSessionProgress = (sessionId: string, totalMessages: number) => {
+  if (!sessionProgress.has(sessionId) && sessionProgress.size >= SESSION_PROGRESS_LIMIT) {
+    const oldest = sessionProgress.keys().next().value
+    if (oldest) {
+      sessionProgress.delete(oldest)
+    }
+  }
+
+  sessionProgress.set(sessionId, totalMessages)
+}
+
+const sanitizeMessageContent = (text: unknown): string | null => {
+  if (typeof text !== 'string') {
+    return null
+  }
+
+  const trimmed = text.trim()
+
+  if (!trimmed) {
+    return null
+  }
+
+  return trimmed
+}
+
+const truncateExample = (text: string): string => {
+  const trimmed = text.trim()
+  if (trimmed.length <= 160) {
+    return trimmed
+  }
+
+  return `${trimmed.slice(0, 157)}…`
+}
+
+const trackConversationSignals = (userMessageContents: string[]) => {
+  if (!userMessageContents.length) {
+    return
+  }
+
+  const timestamp = Date.now()
+
+  userMessageContents.forEach((rawContent) => {
+    const content = sanitizeMessageContent(rawContent)
+
+    if (!content) {
+      return
+    }
+
+    const concernMatches = concernDefinitions.filter((definition) =>
+      definition.matchers.some((matcher) => matcher.test(content)),
+    )
+
+    const conditionMatches = conditionDefinitions.filter((definition) =>
+      definition.matchers.some((matcher) => matcher.test(content)),
+    )
+
+    if (concernMatches.length === 0 && conditionMatches.length === 0) {
+      return
+    }
+
+    const example = truncateExample(content)
+
+    concernMatches.forEach((definition) => {
+      const stat = concernStats[definition.id]
+      stat.count += 1
+      stat.lastExample = example
+      stat.lastMentionAt = timestamp
+    })
+
+    conditionMatches.forEach((definition) => {
+      const stat = conditionStats[definition.id]
+      stat.count += 1
+      stat.lastExample = example
+      stat.lastMentionAt = timestamp
+    })
+  })
+}
 
 const truncateExample = (text: string): string => {
   const trimmed = text.trim()
@@ -264,7 +345,8 @@ const trackConversationSignals = (userMessageContents: string[]) => {
 }
 
 export type ChatMetricsPayload = {
-  userMessages: number
+  sessionId?: string
+  userMessages?: number
   conversationUserMessages?: number
   userMessageContents?: string[]
   promptTokens?: number | null
@@ -273,6 +355,7 @@ export type ChatMetricsPayload = {
 }
 
 export function recordChatMetrics({
+  sessionId,
   userMessages,
   conversationUserMessages,
   userMessageContents = [],
@@ -280,7 +363,35 @@ export function recordChatMetrics({
   completionTokens,
   responseTimeMs,
 }: ChatMetricsPayload) {
-  const incrementingMessages = Number.isFinite(userMessages) ? Math.max(0, Math.floor(userMessages)) : 0
+  const sanitizedContents = userMessageContents
+    .map((content) => sanitizeMessageContent(content))
+    .filter((content): content is string => Boolean(content))
+
+  const totalConversationMessages = Number.isFinite(conversationUserMessages)
+    ? Math.max(0, Math.floor(conversationUserMessages ?? 0))
+    : sanitizedContents.length
+
+  let incrementingMessages = Number.isFinite(userMessages) ? Math.max(0, Math.floor(userMessages ?? 0)) : 0
+  let newMessagesToTrack: string[] = []
+
+  if (sessionId) {
+    const previousCount = sessionProgress.get(sessionId) ?? 0
+    const delta = Math.max(0, totalConversationMessages - previousCount)
+
+    if (delta > 0) {
+      if (sanitizedContents.length >= delta) {
+        newMessagesToTrack = sanitizedContents.slice(-delta)
+      } else {
+        newMessagesToTrack = sanitizedContents
+      }
+    }
+
+    incrementingMessages = delta
+    upsertSessionProgress(sessionId, Math.max(previousCount, totalConversationMessages))
+  } else if (incrementingMessages > 0 && sanitizedContents.length > 0) {
+    const sliceCount = Math.min(incrementingMessages, sanitizedContents.length)
+    newMessagesToTrack = sanitizedContents.slice(-sliceCount)
+  }
 
   metrics.totalRequests += 1
   metrics.totalUserMessages += incrementingMessages
@@ -290,13 +401,11 @@ export function recordChatMetrics({
   metrics.totalResponseTimeMs += responseTimeMs
   metrics.lastInteractionAt = Date.now()
 
-  if (userMessageContents.length > 0) {
-    trackConversationSignals(userMessageContents)
+  if (newMessagesToTrack.length > 0) {
+    trackConversationSignals(newMessagesToTrack)
   }
 
-  const recordedUserMessages = Number.isFinite(conversationUserMessages)
-    ? Math.max(0, Math.floor(conversationUserMessages ?? 0))
-    : incrementingMessages
+  const recordedUserMessages = totalConversationMessages > 0 ? totalConversationMessages : incrementingMessages
 
   recentInteractions.unshift({
     timestamp: metrics.lastInteractionAt,

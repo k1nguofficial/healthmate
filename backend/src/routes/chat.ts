@@ -18,6 +18,7 @@ const chatMessageSchema = z.object({
 })
 
 const chatRequestSchema = z.object({
+  sessionId: z.string().min(1).max(64).optional(),
   messages: z
     .array(chatMessageSchema)
     .min(1, 'Please include at least one message in the conversation.'),
@@ -49,7 +50,8 @@ chatRouter.post('/', async (req, res, next) => {
     })
   }
 
-  const { messages } = parseResult.data
+  const { messages, sessionId: rawSessionId } = parseResult.data
+  const sessionId = rawSessionId?.trim() || undefined
 
   try {
     const limitedMessages = messages.slice(-10)
@@ -76,11 +78,13 @@ chatRouter.post('/', async (req, res, next) => {
     const userOnlyMessages = limitedMessages.filter((message) => message.role === 'user')
     const latestUserMessage = userOnlyMessages[userOnlyMessages.length - 1]
     const latestUserMessageContents = latestUserMessage ? [latestUserMessage.content] : []
+    const userMessageContents = userOnlyMessages.map((message) => message.content)
 
     recordChatMetrics({
+      sessionId,
       userMessages: latestUserMessageContents.length,
       conversationUserMessages: userOnlyMessages.length,
-      userMessageContents: latestUserMessageContents,
+      userMessageContents,
       promptTokens: completion.usage?.prompt_tokens ?? null,
       completionTokens: completion.usage?.completion_tokens ?? null,
       responseTimeMs,

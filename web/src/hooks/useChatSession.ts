@@ -36,6 +36,7 @@ export function useChatSession() {
     input: '',
   })
   const abortControllerRef = useRef<AbortController | null>(null)
+  const sessionIdRef = useRef(createId())
 
   const trimmedInput = state.input.trim()
 
@@ -51,6 +52,7 @@ export function useChatSession() {
 
   const resetChat = useCallback(() => {
     abortControllerRef.current?.abort()
+    sessionIdRef.current = createId()
     setState({
       messages: initialMessages,
       isLoading: false,
@@ -89,6 +91,7 @@ export function useChatSession() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          sessionId: sessionIdRef.current,
           messages: conversationForRequest.slice(-10).map(({ role, content }) => ({
             role,
             content,
